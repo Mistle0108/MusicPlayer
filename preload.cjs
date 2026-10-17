@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('player', {
   onYouTubeProgress: callback => ipcRenderer.on('youtube-progress', (_event, message) => callback(message)),
   onLibraryImported: callback => ipcRenderer.on('library-imported', (_event, tracks) => callback(tracks)),
   onPreferences: callback => ipcRenderer.on('preferences-changed', (_event, value) => callback(value)),
+  onPlaybackShortcut: callback => ipcRenderer.on('playback-shortcut', (_event, action) => callback(action)),
+  playbackShortcut: action => ipcRenderer.send('playback-shortcut', action),
   onClose: callback => ipcRenderer.on('save-before-close', callback),
   closeReady: () => ipcRenderer.invoke('close-ready'),
   onMode: callback => ipcRenderer.on('mode-changed', (_event, value) => callback(value))

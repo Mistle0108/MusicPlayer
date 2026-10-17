@@ -73,7 +73,7 @@ async function dragPlaylist(page, source, target, after = false) {
   await page.waitForFunction(order => [...document.querySelectorAll('#playlist-navigation .playlist-entry')].map(entry => entry.dataset.playlist).join() === order.join(), expected);
 }
 
-test('playback shortcuts work in both modes without interfering with editing', { timeout: 60000 }, async () => {
+test('playback shortcuts exclusively control playback from inputs, menus and dialogs in both modes', { timeout: 60000 }, async () => {
   const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'music-player-shortcuts-'));
   const files = [path.join(temp, 'first.wav'), path.join(temp, 'second.wav')];
   await Promise.all(files.map(file => fs.writeFile(file, wave(30))));
@@ -83,10 +83,11 @@ test('playback shortcuts work in both modes without interfering with editing', {
     await page.keyboard.press(key);
   };
   const state = () => page.evaluate(() => ({ paused: audio.paused, volume: audio.volume, muted: audio.muted, shuffle, repeat, queueIndex, currentId, queue: [...queue], favorites: [...favorites], selected: [...selectedTrackIds], tracks: tracks.length, playlists: JSON.stringify(playlists) }));
-  async function onlyChanges(key, changes, target) {
+  async function onlyChanges(key, changes, target, source = page) {
     const before = await state();
     const position = await page.locator('audio').evaluate(el => el.currentTime);
-    if (target) await page.locator(target).press(key); else await press(key);
+    if (target) await source.locator(target).press(key); else await press(key);
+    await page.waitForFunction(expected => Object.entries(expected).every(([key, value]) => ({ volume: audio.volume, muted: audio.muted, shuffle, repeat })[key] === value), changes);
     assert.deepEqual(await state(), { ...before, ...changes });
     assert.ok(Math.abs(await page.locator('audio').evaluate(el => el.currentTime) - position) < .05);
   }
@@ -127,10 +128,31 @@ test('playback shortcuts work in both modes without interfering with editing', {
       await page.locator('body').evaluate(el => el.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', isComposing: true, bubbles: true })));
       await page.locator('body').evaluate(el => el.dispatchEvent(new KeyboardEvent('keydown', { key: 's', repeat: true, bubbles: true })));
       assert.deepEqual(await state(), protectedState);
+      async function exclusive(target, source = page) {
+        const original = await source.locator(target).evaluate(el => ({ text: el.textContent, value: el.value, start: el.selectionStart, end: el.selectionEnd }));
+        await onlyChanges('m', { muted: true }, target, source);
+        await onlyChanges('m', { muted: false }, target, source);
+        await onlyChanges('s', { shuffle: true }, target, source);
+        await onlyChanges('s', { shuffle: false }, target, source);
+        for (const expected of ['all', 'one', 'off']) await onlyChanges('r', { repeat: expected }, target, source);
+        await onlyChanges('ArrowUp', { volume: .75 }, target, source);
+        await onlyChanges('ArrowDown', { volume: .7 }, target, source);
+        await page.waitForFunction(() => audio.readyState >= 1);
+        await page.locator('audio').evaluate(el => { el.currentTime = 10; });
+        await page.waitForFunction(() => !audio.seeking);
+        await source.locator(target).press('ArrowRight');
+        await page.waitForFunction(() => Math.abs(audio.currentTime - 15) < .05);
+        await source.locator(target).press('ArrowLeft');
+        await page.waitForFunction(() => Math.abs(audio.currentTime - 10) < .05);
+        assert.deepEqual(await source.locator(target).evaluate(el => ({ text: el.textContent, value: el.value, start: el.selectionStart, end: el.selectionEnd })), original);
+        await source.locator(target).press('Space');
+        await page.waitForFunction(() => !audio.paused);
+        await source.locator(target).press('Space');
+        await page.waitForFunction(() => audio.paused);
+      }
       await page.evaluate(() => document.querySelector('#name-dialog').showModal());
-      await page.locator('#name-input').press('s');
-      await page.locator('#name-input').press('Space');
-      assert.deepEqual(await state(), protectedState);
+      await exclusive('#name-input');
+      assert.equal(await page.locator('#name-input').inputValue(), '');
       await page.evaluate(() => document.querySelector('#name-dialog').close());
       for (const target of ['textarea', '[contenteditable="true"]', 'select']) {
         await page.evaluate(selector => {
@@ -139,21 +161,42 @@ test('playback shortcuts work in both modes without interfering with editing', {
           if (selector.startsWith('[')) element.contentEditable = 'true';
           document.body.append(element);
         }, target);
-        for (const key of ['Space', 'm', 's', 'r', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Control+ArrowLeft', 'Control+ArrowRight']) {
-          await onlyChanges(key, {}, '#shortcut-edit-test');
-        }
+        await exclusive('#shortcut-edit-test');
         await page.locator('#shortcut-edit-test').evaluate(el => el.remove());
       }
-      await page.evaluate(() => { $('#track-menu').hidden = false; });
-      for (const key of ['Space', 'm', 's', 'r', 'ArrowUp', 'Control+ArrowRight']) await onlyChanges(key, {});
+      await page.evaluate(() => {
+        $('#track-menu').innerHTML = '<button id="shortcut-menu-test">메뉴 동작</button>';
+        window.shortcutMenuClicked = false;
+        $('#shortcut-menu-test').onclick = () => { window.shortcutMenuClicked = true; };
+        $('#track-menu').hidden = false;
+      });
+      await exclusive('#shortcut-menu-test');
+      assert.equal(await page.evaluate(() => window.shortcutMenuClicked), false);
       await page.evaluate(() => { $('#track-menu').hidden = true; });
       if (!compact) {
-        await page.locator('#search').press('m');
-        assert.deepEqual(await state(), { ...protectedState, selected: [] });
+        await exclusive('#search');
         await page.locator('#search').fill('');
+        await page.locator('#new-playlist').press('Space');
+        await page.waitForFunction(() => !audio.paused);
+        assert.equal(await page.locator('#name-dialog').isVisible(), false);
+        await page.evaluate(() => audio.pause());
         await page.locator('.track-row').first().press('Space');
         await page.waitForFunction(() => !document.querySelector('audio').paused);
         await page.evaluate(() => audio.pause());
+      }
+      for (const [button, target] of [['#open-settings', '#seek-seconds'], ['#open-youtube', '#youtube-url']]) {
+        const opened = instance.waitForEvent('window');
+        await page.locator(button).click();
+        const popup = await opened;
+        await popup.waitForFunction(() => window.player && document.querySelector('button svg'));
+        await exclusive(target, popup);
+        const previous = (await state()).queueIndex;
+        await popup.locator(target).press('Control+ArrowRight');
+        await page.waitForFunction(index => queueIndex !== index, previous);
+        await popup.locator(target).press('Control+ArrowLeft');
+        await page.waitForFunction(index => queueIndex === index, previous);
+        await page.evaluate(() => audio.pause());
+        await popup.close();
       }
       await page.evaluate(() => { audio.volume = 1; });
       await press('ArrowUp'); assert.equal((await state()).volume, 1);
@@ -205,8 +248,9 @@ test('keyboard seek interval applies immediately and survives restart', { timeou
     await seek('ArrowRight', 17);
     await seek('ArrowLeft', 10, '#seek');
     await page.locator('#search').fill('seek');
-    await page.locator('#search').press('ArrowLeft');
-    assert.ok(Math.abs(await position() - 10) < .05);
+    await seek('ArrowLeft', 3, '#search');
+    assert.equal(await page.locator('#search').evaluate(el => el.selectionStart), 4);
+    await seek('ArrowRight', 10, '#search');
     await seek('ArrowRight', 17, '#volume');
     await seek('ArrowLeft', 10, '#volume');
     assert.equal(await page.locator('#volume').inputValue(), '70');

@@ -21,7 +21,7 @@
       <section id="general-panel" role="tabpanel" aria-labelledby="general-tab">
         <h1>기본 설정</h1><p class="settings-description">음악을 듣는 방식에 맞게 설정하세요.</p>
         <h2>키보드</h2>
-        <div class="settings-note">기본·축약 모드 공통 재생 단축키<br>Space: 재생·일시정지 · ← / →: 재생 위치 이동<br>Ctrl + ← / →: 이전·다음 곡 · ↑ / ↓: 음량 5% 조절<br>M: 음소거 · S: 셔플 · R: 반복 끔 → 전체 → 한 곡<br>검색·이름 입력, 메뉴와 대화상자에서는 적용되지 않습니다.</div>
+        <div class="settings-note">기본·축약 모드 공통 재생 단축키<br>Space: 재생·일시정지 · ← / →: 재생 위치 이동<br>Ctrl + ← / →: 이전·다음 곡 · ↑ / ↓: 음량 5% 조절<br>M: 음소거 · S: 셔플 · R: 반복 끔 → 전체 → 한 곡<br>앱의 모든 창에서 입력 위치와 관계없이 재생에만 사용됩니다.</div>
         <label class="setting-row"><span><strong>방향키 이동 간격</strong><small>← / → 키로 재생 위치를 이동합니다. (1~600초)</small></span><span><input id="seek-seconds" type="number" min="1" max="600" step="1" value="5" aria-label="방향키 이동 간격 (초)"> 초</span></label>
         <h2>창 닫기</h2>
         <label class="setting-row"><span><strong>닫으면 트레이로 이동</strong><small>닫기 버튼을 눌러도 음악 재생을 유지합니다.</small></span><input id="close-to-tray" type="checkbox" role="switch"></label>
@@ -46,6 +46,7 @@
   <footer class="settings-footer"><span id="settings-status" role="status">변경 내용이 자동으로 저장됩니다.</span><button id="done-settings" class="primary">완료</button></footer>
   <script src="appearance.js"></script>
   <script src="icons.js"></script>
+  <script src="shortcuts.js"></script>
   <script src="settings.js"></script>
 </body>
 </html>

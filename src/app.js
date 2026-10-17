@@ -638,39 +638,23 @@ document.addEventListener('keydown', event => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a' && !compact && !view.startsWith('playlist:') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) && !document.querySelector('dialog[open]')) {
     event.preventDefault(); selectedTrackIds = new Set(visibleTracks().map(track => track.id)); renderTrackSelection();
   }
-  if (event.defaultPrevented || event.isComposing || event.target.isContentEditable || event.target.closest('textarea, select, [role="textbox"]') || document.querySelector('dialog[open]') || !$('#track-menu').hidden) return;
-  const range = event.target.matches('#seek, #volume');
-  if (event.target.closest('input') && !range) return;
-  if (event.altKey || event.metaKey || event.shiftKey) return;
-  if (event.ctrlKey) {
-    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-    event.preventDefault();
-    if (!event.repeat) { if (event.key === 'ArrowLeft') previousTrack(); else nextTrack(); }
-    return;
-  }
-  let action;
-  if (event.code === 'Space') {
-    if (event.target.closest('button') && !event.target.closest('.player-bar')) return;
-    action = togglePlay;
-  } else if (['ArrowLeft', 'ArrowRight'].includes(event.key)) {
-    action = () => {
-      if (!currentTrack() || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
-      audio.currentTime = Math.max(0, Math.min(audio.duration, (audio.currentTime || resumeTime) + (event.key === 'ArrowRight' ? seekSeconds : -seekSeconds)));
-      resumeTime = 0; updateTime(); save();
-    };
-  } else if (['ArrowUp', 'ArrowDown'].includes(event.key)) {
-    action = () => {
-      audio.volume = Math.max(0, Math.min(1, Math.round((audio.volume + (event.key === 'ArrowUp' ? .05 : -.05)) * 100) / 100));
-      audio.muted = false; if (audio.volume) lastVolume = audio.volume;
-      renderPlayer(); save();
-    };
+});
+window.player.onPlaybackShortcut(action => {
+  if (action === 'play') { togglePlay(); return; }
+  if (action === 'previous') { previousTrack(); return; }
+  if (action === 'next') { nextTrack(); return; }
+  if (['seek-backward', 'seek-forward'].includes(action)) {
+    if (!currentTrack() || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
+    audio.currentTime = Math.max(0, Math.min(audio.duration, (audio.currentTime || resumeTime) + (action === 'seek-forward' ? seekSeconds : -seekSeconds)));
+    resumeTime = 0; updateTime(); save();
+  } else if (['volume-up', 'volume-down'].includes(action)) {
+    audio.volume = Math.max(0, Math.min(1, Math.round((audio.volume + (action === 'volume-up' ? .05 : -.05)) * 100) / 100));
+    audio.muted = false; if (audio.volume) lastVolume = audio.volume;
+    renderPlayer(); save();
   } else {
-    const button = ({ m: '#mute', s: '#shuffle', r: '#repeat' })[event.key.toLowerCase()];
-    if (button) action = () => $(button).click();
+    const button = ({ mute: '#mute', shuffle: '#shuffle', repeat: '#repeat' })[action];
+    if (button) $(button).click();
   }
-  if (!action) return;
-  event.preventDefault();
-  if (!event.repeat || event.key.startsWith('Arrow')) action();
 });
 let dragDepth = 0;
 document.addEventListener('dragenter', event => { if ([...event.dataTransfer.types].includes('Files')) { event.preventDefault(); dragDepth++; $('#drop-overlay').hidden = false; } });
