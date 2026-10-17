@@ -14,6 +14,7 @@ let tracks = [], playlists = [], favorites = [], queue = [], currentId = null;
 let view = 'all', group = null, compact = false, shuffle = false, repeat = 'off', sort = 'added';
 let compactQueueExpanded = false;
 let queueIndex = -1;
+let seekSeconds = 5;
 let selectedTrackIds = new Set(), selectionAnchor = null;
 let resumeTime = 0, importing = false, history = [], lastVolume = .7, saveTimer, toastTimer;
 const trackById = id => tracks.find(track => track.id === id);
@@ -522,7 +523,11 @@ function updateQueueExpanded(value) {
 window.player.onMode(updateMode);
 window.player.onQueueExpanded(updateQueueExpanded);
 $('#compact-queue-toggle').onclick = async () => updateQueueExpanded(await window.player.expandQueue(!compactQueueExpanded));
-window.player.onPreferences(preferences => Appearance.apply(preferences.appearance));
+function applyPreferences(preferences = {}) {
+  Appearance.apply(preferences.appearance);
+  seekSeconds = preferences.seekSeconds ?? 5;
+}
+window.player.onPreferences(applyPreferences);
 window.player.onClose(async () => { await save(true); window.player.closeReady(); });
 $('#open-settings').onclick = () => window.player.openSettings();
 $('#open-youtube').onclick = () => window.player.openYouTube();
@@ -630,6 +635,13 @@ audio.onended = () => nextTrack(true);
 audio.onerror = () => { notify('이 파일을 재생할 수 없습니다. 파일이 이동되었거나 지원하지 않는 형식입니다.'); renderPlayer(); };
 document.addEventListener('click', event => { if (!event.target.closest('.row-menu, #track-menu')) $('#track-menu').hidden = true; });
 document.addEventListener('keydown', event => {
+  if (['ArrowLeft', 'ArrowRight'].includes(event.key) && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.isComposing && !event.target.isContentEditable && (!['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.id === 'seek') && !document.querySelector('dialog[open]')) {
+    event.preventDefault();
+    if (currentTrack() && Number.isFinite(audio.duration) && audio.duration > 0) {
+      audio.currentTime = Math.max(0, Math.min(audio.duration, (audio.currentTime || resumeTime) + (event.key === 'ArrowRight' ? seekSeconds : -seekSeconds)));
+      resumeTime = 0; updateTime(); save();
+    }
+  }
   if (event.key === 'Escape') { $('#track-menu').hidden = true; $('#drop-overlay').hidden = true; }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a' && !compact && !view.startsWith('playlist:') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) && !document.querySelector('dialog[open]')) {
     event.preventDefault(); selectedTrackIds = new Set(visibleTracks().map(track => track.id)); renderTrackSelection();
@@ -667,7 +679,7 @@ navigator.mediaDevices?.addEventListener('devicechange', refreshOutputs);
 async function init() {
   try {
     const saved = await window.player.load();
-    Appearance.apply(saved.preferences?.appearance);
+    applyPreferences(saved.preferences);
     tracks = saved.tracks; playlists = saved.playlists; favorites = saved.favorites;
     const settings = saved.settings || {};
     if (settings.queueVersion === 2) {

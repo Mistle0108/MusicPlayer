@@ -73,6 +73,68 @@ async function dragPlaylist(page, source, target, after = false) {
   await page.waitForFunction(order => [...document.querySelectorAll('#playlist-navigation .playlist-entry')].map(entry => entry.dataset.playlist).join() === order.join(), expected);
 }
 
+test('keyboard seek interval applies immediately and survives restart', { timeout: 60000 }, async () => {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'music-player-seek-'));
+  const profile = path.join(temp, 'profile');
+  const file = path.join(temp, 'seek.wav');
+  await fs.writeFile(file, wave(30));
+  let { instance, page } = await launch(profile);
+  const position = () => page.locator('audio').evaluate(el => el.currentTime);
+  async function seek(key, expected, target = 'body') {
+    await page.locator(target).press(key);
+    await page.waitForFunction(value => Math.abs(document.querySelector('audio').currentTime - value) < .05, expected);
+  }
+  try {
+    await chooseFiles(instance, [file]);
+    await page.locator('#add-files').click();
+    await page.locator('.track-row').dblclick();
+    await page.waitForFunction(() => !document.querySelector('audio').paused);
+    await page.locator('audio').evaluate(el => { el.pause(); el.currentTime = 10; });
+    await seek('ArrowRight', 15);
+    await seek('ArrowLeft', 10);
+    const opened = instance.waitForEvent('window');
+    await page.locator('#open-settings').click();
+    const settings = await opened;
+    await settings.waitForFunction(() => document.querySelectorAll('.theme-preset').length === 5);
+    assert.equal(await settings.locator('#seek-seconds').inputValue(), '5');
+    await settings.locator('#seek-seconds').fill('7');
+    await settings.locator('#seek-seconds').press('Tab');
+    await settings.waitForFunction(() => document.querySelector('#settings-status').textContent.includes('저장되었습니다'));
+    await settings.locator('#seek-seconds').fill('0');
+    await settings.locator('#seek-seconds').press('Tab');
+    assert.equal(await settings.locator('#seek-seconds').evaluate(el => el.checkValidity()), false);
+    assert.equal((await page.evaluate(() => window.player.preferences())).seekSeconds, 7);
+    const closed = settings.waitForEvent('close');
+    await settings.locator('#done-settings').click();
+    await closed;
+    await seek('ArrowRight', 17);
+    await seek('ArrowLeft', 10, '#seek');
+    await page.locator('#search').fill('seek');
+    await page.locator('#search').press('ArrowLeft');
+    assert.ok(Math.abs(await position() - 10) < .05);
+    await page.locator('#volume').press('ArrowLeft');
+    assert.ok(Math.abs(await position() - 10) < .05);
+    await page.locator('#mode-toggle').click();
+    await seek('ArrowLeft', 3);
+    await seek('ArrowLeft', 0);
+    await page.locator('audio').evaluate(el => { el.currentTime = 28; });
+    await seek('ArrowRight', 30);
+    await page.locator('audio').evaluate(el => { el.currentTime = 10; });
+    await page.evaluate(() => save(true));
+    await instance.close();
+    ({ instance, page } = await launch(profile));
+    await page.waitForFunction(() => document.querySelector('audio').readyState >= 1 && Math.abs(document.querySelector('audio').currentTime - 10) < .05);
+    await seek('ArrowRight', 17);
+    const reopened = instance.waitForEvent('window');
+    await page.locator('#open-settings').click();
+    const restored = await reopened;
+    await restored.waitForFunction(() => document.querySelector('#seek-seconds').value === '7');
+  } finally {
+    await instance.close().catch(() => {});
+    await fs.rm(temp, { recursive: true, force: true });
+  }
+});
+
 test('real Windows player: import, playback, modes, playlists, queue and restoration', { timeout: 120000 }, async () => {
   const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'music-player-test-'));
   const profile = path.join(temp, 'profile');

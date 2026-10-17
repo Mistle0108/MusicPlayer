@@ -20,6 +20,8 @@
     <div class="settings-content">
       <section id="general-panel" role="tabpanel" aria-labelledby="general-tab">
         <h1>기본 설정</h1><p class="settings-description">음악을 듣는 방식에 맞게 설정하세요.</p>
+        <h2>키보드</h2>
+        <label class="setting-row"><span><strong>방향키 이동 간격</strong><small>← / → 키로 재생 위치를 이동합니다. (1~600초)</small></span><span><input id="seek-seconds" type="number" min="1" max="600" step="1" value="5" aria-label="방향키 이동 간격 (초)"> 초</span></label>
         <h2>창 닫기</h2>
         <label class="setting-row"><span><strong>닫으면 트레이로 이동</strong><small>닫기 버튼을 눌러도 음악 재생을 유지합니다.</small></span><input id="close-to-tray" type="checkbox" role="switch"></label>
         <div class="settings-note">트레이 아이콘을 두 번 클릭하면 창을 다시 열 수 있어요.<br>앱을 완전히 종료하려면 트레이 메뉴에서 ‘종료’를 선택하세요.</div>

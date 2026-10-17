@@ -207,6 +207,7 @@ if (hasLock) app.whenReady().then(async () => {
   ipcMain.handle('save-preferences', async (_event, preferences) => {
     data.preferences = {
       closeToTray: Boolean(preferences.closeToTray),
+      seekSeconds: Number.isInteger(preferences.seekSeconds) && preferences.seekSeconds >= 1 && preferences.seekSeconds <= 600 ? preferences.seekSeconds : 5,
       appearance: preferences.appearance
     };
     if (data.preferences.closeToTray) ensureTray();

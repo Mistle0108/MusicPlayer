@@ -1,6 +1,6 @@
 const $ = selector => document.querySelector(selector);
 document.querySelectorAll('[data-icon]').forEach(element => element.innerHTML = window.renderPlayerIcon(element.dataset.icon));
-let preferences = { closeToTray: false, appearance: Appearance.normalize() };
+let preferences = { closeToTray: false, seekSeconds: 5, appearance: Appearance.normalize() };
 let pendingSave = Promise.resolve();
 const previewSheet = new CSSStyleSheet();
 document.adoptedStyleSheets = [...document.adoptedStyleSheets, previewSheet];
@@ -38,6 +38,7 @@ function render() {
   const appearance = preferences.appearance;
   const palette = Appearance.palette(appearance);
   $('#close-to-tray').checked = preferences.closeToTray;
+  $('#seek-seconds').value = preferences.seekSeconds;
   $('#appearance-mode').value = appearance.mode;
   $('#appearance-font').value = appearance.font;
   $('#color-mode-label').textContent = `${palette.mode === 'dark' ? '다크' : '라이트'} 모드 색상`;
@@ -76,6 +77,12 @@ function changeColor(key, value) {
   update();
 }
 $('#close-to-tray').onchange = () => { preferences.closeToTray = $('#close-to-tray').checked; persist(); };
+$('#seek-seconds').onchange = () => {
+  const input = $('#seek-seconds');
+  if (!input.value || !input.checkValidity()) { input.reportValidity(); return; }
+  preferences.seekSeconds = Number(input.value);
+  persist();
+};
 $('#appearance-mode').onchange = () => { preferences.appearance.mode = $('#appearance-mode').value; update(); };
 $('#appearance-font').onchange = () => { preferences.appearance.font = $('#appearance-font').value; update(); };
 $('#reset-theme').onclick = () => { preferences.appearance = Appearance.normalize(); update(); };
@@ -92,6 +99,6 @@ document.querySelectorAll('.reset-color').forEach(button => button.onclick = () 
 });
 window.addEventListener('appearance-mode-changed', render);
 window.player.preferences().then(value => {
-  preferences = { closeToTray: Boolean(value.closeToTray), appearance: Appearance.apply(value.appearance) };
+  preferences = { closeToTray: Boolean(value.closeToTray), seekSeconds: value.seekSeconds ?? 5, appearance: Appearance.apply(value.appearance) };
   render();
 }).catch(() => { $('#settings-status').textContent = '설정을 불러오지 못했습니다.'; });
