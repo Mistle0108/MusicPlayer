@@ -1,6 +1,6 @@
 {
   "name": "music-player",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Windows local music player with full and compact modes",
   "private": true,
   "main": "main.cjs",

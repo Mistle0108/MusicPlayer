@@ -236,10 +236,10 @@ test('keyboard seek interval applies immediately and survives restart', { timeou
     await settings.waitForFunction(() => document.querySelectorAll('.theme-preset').length === 5);
     assert.equal(await settings.locator('#seek-seconds').inputValue(), '5');
     await settings.locator('#seek-seconds').fill('7');
-    await settings.locator('#seek-seconds').press('Tab');
+    await settings.locator('#seek-seconds').blur();
     await settings.waitForFunction(() => document.querySelector('#settings-status').textContent.includes('저장되었습니다'));
     await settings.locator('#seek-seconds').fill('0');
-    await settings.locator('#seek-seconds').press('Tab');
+    await settings.locator('#seek-seconds').blur();
     assert.equal(await settings.locator('#seek-seconds').evaluate(el => el.checkValidity()), false);
     assert.equal((await page.evaluate(() => window.player.preferences())).seekSeconds, 7);
     const closed = settings.waitForEvent('close');
@@ -471,7 +471,7 @@ test('playlist Enter and dragging, appearance popup, tray close and persisted pr
     await settings.locator('#preset-ocean').click();
     for (const [key, color] of [['accent', '#d05eb5'], ['background', '#24212b'], ['foreground', '#f1e4d1']]) {
       await settings.locator(`#${key}-hex`).fill(color);
-      await settings.locator(`#${key}-hex`).press('Tab');
+      await settings.locator(`#${key}-hex`).blur();
     }
     await settings.locator('#appearance-font').selectOption('Consolas');
     await page.waitForFunction(() => getComputedStyle(document.body).backgroundColor === 'rgb(36, 33, 43)');
@@ -492,10 +492,10 @@ test('playlist Enter and dragging, appearance popup, tray close and persisted pr
     assert.equal(await settings.locator('#background-hex').inputValue(), '#24212b');
     await settings.locator('#appearance-mode').selectOption('dark');
     await settings.locator('#foreground-hex').fill('invalid');
-    await settings.locator('#foreground-hex').press('Tab');
+    await settings.locator('#foreground-hex').blur();
     assert.equal(await settings.locator('#foreground-hex').getAttribute('aria-invalid'), 'true');
     await settings.locator('#foreground-hex').fill('#f1e4d1');
-    await settings.locator('#foreground-hex').press('Tab');
+    await settings.locator('#foreground-hex').blur();
     await fs.mkdir(path.join(root, 'test-results'), { recursive: true });
     await settings.screenshot({ path: path.join(root, 'test-results', 'settings-theme.png') });
     const closed = settings.waitForEvent('close');

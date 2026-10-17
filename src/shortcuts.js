@@ -1,4 +1,9 @@
 document.addEventListener('keydown', event => {
+  if (event.key === 'Tab') {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    return;
+  }
   if (event.altKey || event.metaKey || event.shiftKey) return;
   const action = event.ctrlKey
     ? ({ ArrowLeft: 'previous', ArrowRight: 'next' })[event.code]
