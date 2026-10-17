@@ -181,6 +181,11 @@ const hasLock = app.requestSingleInstanceLock();
 if (!hasLock) app.quit();
 app.on('second-instance', showPlayer);
 app.on('before-quit', () => { quitting = true; youtubeExtractor?.cancel(); });
+ipcMain.on('playback-shortcut', (event, action) => {
+  if (![win, settingsWindow, youtubeWindow].some(window => window && !window.isDestroyed() && window.webContents === event.sender)) return;
+  if (!['play', 'previous', 'next', 'seek-backward', 'seek-forward', 'volume-up', 'volume-down', 'mute', 'shuffle', 'repeat'].includes(action)) return;
+  if (win && !win.isDestroyed()) win.webContents.send('playback-shortcut', action);
+});
 
 if (hasLock) app.whenReady().then(async () => {
   youtubeExtractor = new YouTubeExtractor(app.isPackaged ? path.join(process.resourcesPath, 'youtube') : path.join(__dirname, 'tools', 'youtube'), path.join(app.getPath('userData'), 'youtube-cache'));

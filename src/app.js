@@ -272,7 +272,6 @@ function renderLibrary() {
     row.onkeydown = event => {
       if (event.target !== row) return;
       if (event.key === 'Enter') playRow();
-      if (event.code === 'Space' && !playlist) { event.preventDefault(); event.stopPropagation(); selectTrack(row.dataset.id, event); }
     };
     const contextTracks = () => {
       if (playlist) return [list[index]];
@@ -635,18 +634,27 @@ audio.onended = () => nextTrack(true);
 audio.onerror = () => { notify('이 파일을 재생할 수 없습니다. 파일이 이동되었거나 지원하지 않는 형식입니다.'); renderPlayer(); };
 document.addEventListener('click', event => { if (!event.target.closest('.row-menu, #track-menu')) $('#track-menu').hidden = true; });
 document.addEventListener('keydown', event => {
-  if (['ArrowLeft', 'ArrowRight'].includes(event.key) && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.isComposing && !event.target.isContentEditable && (!['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || event.target.id === 'seek') && !document.querySelector('dialog[open]')) {
-    event.preventDefault();
-    if (currentTrack() && Number.isFinite(audio.duration) && audio.duration > 0) {
-      audio.currentTime = Math.max(0, Math.min(audio.duration, (audio.currentTime || resumeTime) + (event.key === 'ArrowRight' ? seekSeconds : -seekSeconds)));
-      resumeTime = 0; updateTime(); save();
-    }
-  }
   if (event.key === 'Escape') { $('#track-menu').hidden = true; $('#drop-overlay').hidden = true; }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a' && !compact && !view.startsWith('playlist:') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) && !document.querySelector('dialog[open]')) {
     event.preventDefault(); selectedTrackIds = new Set(visibleTracks().map(track => track.id)); renderTrackSelection();
   }
-  if (event.code === 'Space' && !['INPUT', 'SELECT', 'BUTTON'].includes(event.target.tagName) && !document.querySelector('dialog[open]')) { event.preventDefault(); togglePlay(); }
+});
+window.player.onPlaybackShortcut(action => {
+  if (action === 'play') { togglePlay(); return; }
+  if (action === 'previous') { previousTrack(); return; }
+  if (action === 'next') { nextTrack(); return; }
+  if (['seek-backward', 'seek-forward'].includes(action)) {
+    if (!currentTrack() || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
+    audio.currentTime = Math.max(0, Math.min(audio.duration, (audio.currentTime || resumeTime) + (action === 'seek-forward' ? seekSeconds : -seekSeconds)));
+    resumeTime = 0; updateTime(); save();
+  } else if (['volume-up', 'volume-down'].includes(action)) {
+    audio.volume = Math.max(0, Math.min(1, Math.round((audio.volume + (action === 'volume-up' ? .05 : -.05)) * 100) / 100));
+    audio.muted = false; if (audio.volume) lastVolume = audio.volume;
+    renderPlayer(); save();
+  } else {
+    const button = ({ mute: '#mute', shuffle: '#shuffle', repeat: '#repeat' })[action];
+    if (button) $(button).click();
+  }
 });
 let dragDepth = 0;
 document.addEventListener('dragenter', event => { if ([...event.dataTransfer.types].includes('Files')) { event.preventDefault(); dragDepth++; $('#drop-overlay').hidden = false; } });
