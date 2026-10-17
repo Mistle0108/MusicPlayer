@@ -73,6 +73,99 @@ async function dragPlaylist(page, source, target, after = false) {
   await page.waitForFunction(order => [...document.querySelectorAll('#playlist-navigation .playlist-entry')].map(entry => entry.dataset.playlist).join() === order.join(), expected);
 }
 
+test('playback shortcuts work in both modes without interfering with editing', { timeout: 60000 }, async () => {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'music-player-shortcuts-'));
+  const files = [path.join(temp, 'first.wav'), path.join(temp, 'second.wav')];
+  await Promise.all(files.map(file => fs.writeFile(file, wave(30))));
+  const { instance, page } = await launch(path.join(temp, 'profile'));
+  const press = async key => {
+    await page.evaluate(() => document.activeElement.blur());
+    await page.keyboard.press(key);
+  };
+  const state = () => page.evaluate(() => ({ paused: audio.paused, volume: audio.volume, muted: audio.muted, shuffle, repeat, queueIndex, currentId, queue: [...queue], favorites: [...favorites], selected: [...selectedTrackIds], tracks: tracks.length, playlists: JSON.stringify(playlists) }));
+  async function onlyChanges(key, changes, target) {
+    const before = await state();
+    const position = await page.locator('audio').evaluate(el => el.currentTime);
+    if (target) await page.locator(target).press(key); else await press(key);
+    assert.deepEqual(await state(), { ...before, ...changes });
+    assert.ok(Math.abs(await page.locator('audio').evaluate(el => el.currentTime) - position) < .05);
+  }
+  try {
+    await chooseFiles(instance, files);
+    await page.locator('#add-files').click();
+    await playAllLibrary(page);
+    await page.waitForFunction(() => !document.querySelector('audio').paused);
+    for (const compact of [false, true]) {
+      if (compact) await page.locator('#mode-toggle').click();
+      await page.evaluate(() => { audio.pause(); audio.volume = .7; audio.muted = false; });
+      const pausedState = await state();
+      await press('Space');
+      await page.waitForFunction(() => !document.querySelector('audio').paused);
+      assert.deepEqual(await state(), { ...pausedState, paused: false });
+      await page.locator('#play').press('Space');
+      await page.waitForFunction(() => document.querySelector('audio').paused);
+      assert.deepEqual(await state(), pausedState);
+      await onlyChanges('ArrowUp', { volume: .75 });
+      await onlyChanges('ArrowDown', { volume: .7 });
+      await onlyChanges('ArrowUp', { volume: .75 }, '#seek');
+      await onlyChanges('ArrowDown', { volume: .7 }, '#volume');
+      await onlyChanges('m', { muted: true });
+      await onlyChanges('m', { muted: false });
+      const before = await state();
+      await onlyChanges('s', { shuffle: !before.shuffle });
+      await onlyChanges('s', { shuffle: before.shuffle });
+      for (const expected of ['all', 'one', 'off']) {
+        await onlyChanges('r', { repeat: expected });
+      }
+      await press('Control+ArrowRight');
+      await page.waitForFunction(index => queueIndex !== index, before.queueIndex);
+      await press('Control+ArrowLeft');
+      await page.waitForFunction(index => queueIndex === index, before.queueIndex);
+      await page.evaluate(() => audio.pause());
+      const protectedState = await state();
+      await press('Control+s'); await press('Shift+r');
+      await page.locator('body').evaluate(el => el.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', isComposing: true, bubbles: true })));
+      await page.locator('body').evaluate(el => el.dispatchEvent(new KeyboardEvent('keydown', { key: 's', repeat: true, bubbles: true })));
+      assert.deepEqual(await state(), protectedState);
+      await page.evaluate(() => document.querySelector('#name-dialog').showModal());
+      await page.locator('#name-input').press('s');
+      await page.locator('#name-input').press('Space');
+      assert.deepEqual(await state(), protectedState);
+      await page.evaluate(() => document.querySelector('#name-dialog').close());
+      for (const target of ['textarea', '[contenteditable="true"]', 'select']) {
+        await page.evaluate(selector => {
+          const element = document.createElement(selector === '[contenteditable="true"]' ? 'div' : selector);
+          element.id = 'shortcut-edit-test';
+          if (selector.startsWith('[')) element.contentEditable = 'true';
+          document.body.append(element);
+        }, target);
+        for (const key of ['Space', 'm', 's', 'r', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Control+ArrowLeft', 'Control+ArrowRight']) {
+          await onlyChanges(key, {}, '#shortcut-edit-test');
+        }
+        await page.locator('#shortcut-edit-test').evaluate(el => el.remove());
+      }
+      await page.evaluate(() => { $('#track-menu').hidden = false; });
+      for (const key of ['Space', 'm', 's', 'r', 'ArrowUp', 'Control+ArrowRight']) await onlyChanges(key, {});
+      await page.evaluate(() => { $('#track-menu').hidden = true; });
+      if (!compact) {
+        await page.locator('#search').press('m');
+        assert.deepEqual(await state(), { ...protectedState, selected: [] });
+        await page.locator('#search').fill('');
+        await page.locator('.track-row').first().press('Space');
+        await page.waitForFunction(() => !document.querySelector('audio').paused);
+        await page.evaluate(() => audio.pause());
+      }
+      await page.evaluate(() => { audio.volume = 1; });
+      await press('ArrowUp'); assert.equal((await state()).volume, 1);
+      await page.evaluate(() => { audio.volume = 0; });
+      await press('ArrowDown'); assert.equal((await state()).volume, 0);
+    }
+  } finally {
+    await instance.close();
+    await fs.rm(temp, { recursive: true, force: true });
+  }
+});
+
 test('keyboard seek interval applies immediately and survives restart', { timeout: 60000 }, async () => {
   const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'music-player-seek-'));
   const profile = path.join(temp, 'profile');
@@ -81,6 +174,7 @@ test('keyboard seek interval applies immediately and survives restart', { timeou
   let { instance, page } = await launch(profile);
   const position = () => page.locator('audio').evaluate(el => el.currentTime);
   async function seek(key, expected, target = 'body') {
+    await page.waitForFunction(() => document.querySelector('audio').readyState >= 1 && !document.querySelector('audio').seeking);
     await page.locator(target).press(key);
     await page.waitForFunction(value => Math.abs(document.querySelector('audio').currentTime - value) < .05, expected);
   }
@@ -89,6 +183,7 @@ test('keyboard seek interval applies immediately and survives restart', { timeou
     await page.locator('#add-files').click();
     await page.locator('.track-row').dblclick();
     await page.waitForFunction(() => !document.querySelector('audio').paused);
+    await page.waitForFunction(() => document.querySelector('audio').readyState >= 1);
     await page.locator('audio').evaluate(el => { el.pause(); el.currentTime = 10; });
     await seek('ArrowRight', 15);
     await seek('ArrowLeft', 10);
@@ -112,7 +207,9 @@ test('keyboard seek interval applies immediately and survives restart', { timeou
     await page.locator('#search').fill('seek');
     await page.locator('#search').press('ArrowLeft');
     assert.ok(Math.abs(await position() - 10) < .05);
-    await page.locator('#volume').press('ArrowLeft');
+    await seek('ArrowRight', 17, '#volume');
+    await seek('ArrowLeft', 10, '#volume');
+    assert.equal(await page.locator('#volume').inputValue(), '70');
     assert.ok(Math.abs(await position() - 10) < .05);
     await page.locator('#mode-toggle').click();
     await seek('ArrowLeft', 3);
