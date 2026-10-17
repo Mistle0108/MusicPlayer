@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'">
+  <title>유튜브 링크 추출</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="youtube.css">
+</head>
+<body class="youtube-page">
+  <header class="youtube-heading"><h1>유튜브 링크 추출</h1><button id="close-youtube" class="icon-button" title="닫기" aria-label="닫기" data-icon="close"></button></header>
+  <form id="youtube-form">
+    <label class="youtube-label" for="youtube-url">추출할 링크</label>
+    <input id="youtube-url" type="url" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off" required>
+    <label class="youtube-label" for="youtube-path">저장할 경로</label>
+    <div class="youtube-path-row"><input id="youtube-path" type="text" autocomplete="off"><button id="choose-youtube-folder" type="button" title="저장 폴더 선택" aria-label="저장 폴더 선택" data-icon="folder"></button><button id="open-youtube-folder" type="button" title="저장 폴더 열기" aria-label="저장 폴더 열기">열기</button></div>
+    <label class="youtube-auto"><input id="youtube-auto-save" type="checkbox">자동 저장</label>
+    <p id="youtube-status" role="status" aria-live="polite"></p>
+    <div class="youtube-actions"><button id="extract-youtube" type="submit" class="primary">추출</button><button id="save-youtube" type="button" class="secondary" disabled>저장</button></div>
+  </form>
+  <script src="appearance.js"></script>
+  <script src="icons.js"></script>
+  <script src="youtube.js"></script>
+</body>
+</html>

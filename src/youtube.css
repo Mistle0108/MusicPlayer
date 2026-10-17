@@ -1,0 +1,11 @@
+.youtube-page{padding:22px 24px;background:var(--bg);overflow:auto}
+.youtube-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;-webkit-app-region:drag}
+.youtube-heading h1{font-size:19px;letter-spacing:-.4px}.youtube-heading button{-webkit-app-region:no-drag;margin-right:-6px}
+.youtube-label{display:block;font-size:12px;font-weight:600;margin:0 0 8px}
+.youtube-page input[type=url],.youtube-page input[type=text]{height:40px;width:100%;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface-raised);color:var(--fg);font-size:12px}
+#youtube-url{margin-bottom:20px}.youtube-path-row{display:flex}.youtube-path-row input{border-radius:6px 0 0 6px!important}
+.youtube-path-row button{width:42px;flex-shrink:0;border:1px solid var(--line);border-left:0;background:var(--surface-raised)}
+.youtube-path-row button:last-child{width:50px;border-radius:0 6px 6px 0;font-size:11px}
+.youtube-auto{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12px}.youtube-auto input{width:16px;height:16px;margin:0;accent-color:var(--blue)}
+#youtube-status{height:31px;margin:10px 0 8px;color:var(--muted);font-size:11px;line-height:1.4;overflow:auto;overflow-wrap:anywhere}
+#youtube-status.error{color:var(--danger)}.youtube-actions{display:flex;gap:10px}.youtube-actions button{flex:1;height:40px}.youtube-heading button:hover{background:var(--hover)}

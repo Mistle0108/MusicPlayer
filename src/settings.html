@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'">
+  <title>설정 · Music Player</title>
+  <link rel="icon" href="../assets/music-player-256.png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body class="settings-page">
+  <header class="titlebar"><div class="app-title"><img class="app-icon" src="../assets/music-player-256.png" alt=""><span>설정</span></div><div class="window-controls"><button id="close-settings" title="닫기" aria-label="닫기" data-icon="close"></button></div></header>
+  <div class="settings-layout">
+    <nav class="settings-tabs" role="tablist" aria-label="설정 분류">
+      <button id="general-tab" role="tab" aria-selected="true" aria-controls="general-panel" class="active">기본 설정</button>
+      <button id="theme-tab" role="tab" aria-selected="false" aria-controls="theme-panel">테마</button>
+      <div class="settings-brand"><img src="../assets/music-player-256.png" alt=""><span>Music Player</span></div>
+    </nav>
+    <div class="settings-content">
+      <section id="general-panel" role="tabpanel" aria-labelledby="general-tab">
+        <h1>기본 설정</h1><p class="settings-description">음악을 듣는 방식에 맞게 설정하세요.</p>
+        <h2>창 닫기</h2>
+        <label class="setting-row"><span><strong>닫으면 트레이로 이동</strong><small>닫기 버튼을 눌러도 음악 재생을 유지합니다.</small></span><input id="close-to-tray" type="checkbox" role="switch"></label>
+        <div class="settings-note">트레이 아이콘을 두 번 클릭하면 창을 다시 열 수 있어요.<br>앱을 완전히 종료하려면 트레이 메뉴에서 ‘종료’를 선택하세요.</div>
+      </section>
+      <section id="theme-panel" role="tabpanel" aria-labelledby="theme-tab" hidden>
+        <div class="settings-section-heading"><h1>테마</h1><button id="reset-theme" class="text-button">기본값으로 복원</button></div>
+        <p class="settings-description">변경한 스타일은 두 모드에 바로 적용됩니다.</p>
+        <div class="setting-row"><label for="appearance-mode">모드</label><select id="appearance-mode"><option value="system">시스템 설정</option><option value="light">라이트</option><option value="dark">다크</option></select></div>
+        <div class="theme-section"><h2>테마</h2><div id="theme-presets" class="theme-presets"></div></div>
+        <div class="color-section">
+          <div class="color-heading"><h2>색상</h2><span id="color-mode-label"></span></div>
+          <div class="setting-row color-row"><label for="accent-color">액센트</label><div class="color-controls"><div id="accent-swatches" class="accent-swatches"></div><input id="accent-color" type="color" aria-label="액센트 색상"><input id="accent-hex" class="hex-input" aria-label="액센트 색상 코드" maxlength="7" spellcheck="false"></div></div>
+          <div class="setting-row color-row"><label for="background-color">배경색</label><div class="color-controls"><button class="text-button reset-color" data-color="background" title="테마 기본 배경색">기본값</button><input id="background-color" type="color" aria-label="배경색"><input id="background-hex" class="hex-input" aria-label="배경색 코드" maxlength="7" spellcheck="false"></div></div>
+          <div class="setting-row color-row"><label for="foreground-color">전경색</label><div class="color-controls"><button class="text-button reset-color" data-color="foreground" title="테마 기본 전경색">기본값</button><input id="foreground-color" type="color" aria-label="전경색"><input id="foreground-hex" class="hex-input" aria-label="전경색 코드" maxlength="7" spellcheck="false"></div></div>
+        </div>
+        <div class="setting-row"><label for="appearance-font">글꼴</label><select id="appearance-font"><option value="Segoe UI">Segoe UI</option><option value="Malgun Gothic">맑은 고딕</option><option value="Arial">Arial</option><option value="Verdana">Verdana</option><option value="Consolas">Consolas</option><option value="Georgia">Georgia</option></select></div>
+        <div class="settings-note theme-note">라이트·다크 모드의 색상은 각각 저장됩니다.<br>테마를 선택하면 색상이 해당 테마의 기본값으로 바뀝니다.</div>
+      </section>
+    </div>
+  </div>
+  <footer class="settings-footer"><span id="settings-status" role="status">변경 내용이 자동으로 저장됩니다.</span><button id="done-settings" class="primary">완료</button></footer>
+  <script src="appearance.js"></script>
+  <script src="icons.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>

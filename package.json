@@ -1,0 +1,61 @@
+{
+  "name": "music-player",
+  "version": "1.0.0",
+  "description": "Windows local music player with full and compact modes",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "build:icons": "node scripts/build-icons.cjs",
+    "prestart": "npm run build:icons && npm run prepare:youtube",
+    "pretest": "npm run build:icons && npm run prepare:youtube",
+    "prepack": "npm run build:icons && npm run prepare:youtube",
+    "prepare:youtube": "node scripts/prepare-youtube-tools.cjs",
+    "start": "electron .",
+    "test": "node --test --test-concurrency=1 tests/player.test.cjs tests/youtube.test.cjs tests/library.test.cjs",
+    "pack": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "local.musicplayer.desktop",
+    "productName": "Music Player",
+    "files": [
+      "main.cjs",
+      "youtube.cjs",
+      "preload.cjs",
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "tools/youtube",
+        "to": "youtube",
+        "filter": [
+          "*.exe",
+          "*.dll",
+          "*.txt",
+          "*.json",
+          "ffmpeg-LICENSE*",
+          "ffmpeg-COPYING*",
+          "ffmpeg-README*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "assets/music-player.ico",
+      "signExecutable": false
+    },
+    "directories": {
+      "output": "release"
+    }
+  },
+  "dependencies": {
+    "music-metadata": "^12.2.1"
+  },
+  "devDependencies": {
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
+    "extract-zip": "^2.0.1",
+    "playwright": "^1.64.1"
+  }
+}
