@@ -73,7 +73,7 @@ async function dragPlaylist(page, source, target, after = false) {
   await page.waitForFunction(order => [...document.querySelectorAll('#playlist-navigation .playlist-entry')].map(entry => entry.dataset.playlist).join() === order.join(), expected);
 }
 
-test('playback shortcuts exclusively control playback from inputs, menus and dialogs in both modes', { timeout: 60000 }, async () => {
+test('playback shortcuts preserve text editing and control playback outside inputs in both modes', { timeout: 60000 }, async () => {
   const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'music-player-shortcuts-'));
   const files = [path.join(temp, 'first.wav'), path.join(temp, 'second.wav')];
   await Promise.all(files.map(file => fs.writeFile(file, wave(30))));
@@ -125,8 +125,9 @@ test('playback shortcuts exclusively control playback from inputs, menus and dia
       await page.evaluate(() => audio.pause());
       const protectedState = await state();
       await press('Control+s'); await press('Shift+r');
-      await page.locator('body').evaluate(el => el.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', isComposing: true, bubbles: true })));
-      await page.locator('body').evaluate(el => el.dispatchEvent(new KeyboardEvent('keydown', { key: 's', repeat: true, bubbles: true })));
+      await page.locator('body').evaluate(el => el.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', code: 'KeyM', isComposing: true, bubbles: true })));
+      await page.locator('body').evaluate(el => el.dispatchEvent(new KeyboardEvent('keydown', { key: 's', code: 'KeyS', keyCode: 229, bubbles: true })));
+      await page.locator('body').evaluate(el => el.dispatchEvent(new KeyboardEvent('keydown', { key: 's', code: 'KeyS', repeat: true, bubbles: true })));
       assert.deepEqual(await state(), protectedState);
       async function exclusive(target, source = page) {
         const original = await source.locator(target).evaluate(el => ({ text: el.textContent, value: el.value, start: el.selectionStart, end: el.selectionEnd }));
@@ -150,18 +151,50 @@ test('playback shortcuts exclusively control playback from inputs, menus and dia
         await source.locator(target).press('Space');
         await page.waitForFunction(() => audio.paused);
       }
+      await page.evaluate(() => { selectedTrackIds.clear(); renderTrackSelection(); });
+      async function editable(target, source = page) {
+        const element = source.locator(target);
+        const before = await state();
+        const position = await page.locator('audio').evaluate(el => el.currentTime);
+        const numeric = await element.evaluate(el => el.type === 'number');
+        const originalValue = numeric ? await element.inputValue() : null;
+        await element.fill(numeric ? '12' : '');
+        if (!numeric) {
+          await element.pressSequentially('msr ');
+          assert.equal(await element.evaluate(el => el.isContentEditable ? el.textContent.replace(/\u00a0/g, ' ') : el.value), 'msr ');
+          await element.press('ArrowLeft');
+          assert.equal(await element.evaluate(el => el.isContentEditable ? getSelection().anchorOffset : el.selectionStart), 3);
+          await element.press('ArrowRight');
+        }
+        for (const key of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Control+ArrowLeft', 'Control+ArrowRight', 'Space', 'm', 's', 'r']) await element.press(key);
+        const tabPrevented = await element.evaluate(el => {
+          const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+          el.dispatchEvent(event);
+          return event.defaultPrevented;
+        });
+        assert.equal(tabPrevented, false);
+        assert.deepEqual(await state(), before);
+        assert.ok(Math.abs(await page.locator('audio').evaluate(el => el.currentTime) - position) < .05);
+        if (numeric) {
+          await element.fill(originalValue);
+          await element.blur();
+          await source.waitForFunction(() => document.querySelector('#settings-status').textContent.includes('저장되었습니다'));
+        }
+      }
       await page.evaluate(() => document.querySelector('#name-dialog').showModal());
-      await exclusive('#name-input');
-      assert.equal(await page.locator('#name-input').inputValue(), '');
+      await editable('#name-input');
       await page.evaluate(() => document.querySelector('#name-dialog').close());
-      for (const target of ['textarea', '[contenteditable="true"]', 'select']) {
+      for (const target of ['textarea', '[contenteditable="true"]']) {
         await page.evaluate(selector => {
           const element = document.createElement(selector === '[contenteditable="true"]' ? 'div' : selector);
           element.id = 'shortcut-edit-test';
           if (selector.startsWith('[')) element.contentEditable = 'true';
           document.body.append(element);
         }, target);
-        await exclusive('#shortcut-edit-test');
+        await editable('#shortcut-edit-test');
+        const selectedBefore = (await state()).selected;
+        await page.locator('#shortcut-edit-test').press('Control+a');
+        assert.deepEqual((await state()).selected, selectedBefore);
         await page.locator('#shortcut-edit-test').evaluate(el => el.remove());
       }
       await page.evaluate(() => {
@@ -174,7 +207,7 @@ test('playback shortcuts exclusively control playback from inputs, menus and dia
       assert.equal(await page.evaluate(() => window.shortcutMenuClicked), false);
       await page.evaluate(() => { $('#track-menu').hidden = true; });
       if (!compact) {
-        await exclusive('#search');
+        await editable('#search');
         await page.locator('#search').fill('');
         await page.locator('#new-playlist').press('Space');
         await page.waitForFunction(() => !audio.paused);
@@ -189,11 +222,12 @@ test('playback shortcuts exclusively control playback from inputs, menus and dia
         await page.locator(button).click();
         const popup = await opened;
         await popup.waitForFunction(() => window.player && document.querySelector('button svg'));
-        await exclusive(target, popup);
+        await editable(target, popup);
+        await popup.locator(target).blur();
         const previous = (await state()).queueIndex;
-        await popup.locator(target).press('Control+ArrowRight');
+        await popup.keyboard.press('Control+ArrowRight');
         await page.waitForFunction(index => queueIndex !== index, previous);
-        await popup.locator(target).press('Control+ArrowLeft');
+        await popup.keyboard.press('Control+ArrowLeft');
         await page.waitForFunction(index => queueIndex === index, previous);
         await page.evaluate(() => audio.pause());
         await popup.close();
@@ -248,9 +282,11 @@ test('keyboard seek interval applies immediately and survives restart', { timeou
     await seek('ArrowRight', 17);
     await seek('ArrowLeft', 10, '#seek');
     await page.locator('#search').fill('seek');
-    await seek('ArrowLeft', 3, '#search');
+    await page.locator('#search').press('ArrowLeft');
+    assert.equal(await page.locator('#search').evaluate(el => el.selectionStart), 3);
+    assert.ok(Math.abs(await position() - 10) < .05);
+    await page.locator('#search').press('ArrowRight');
     assert.equal(await page.locator('#search').evaluate(el => el.selectionStart), 4);
-    await seek('ArrowRight', 10, '#search');
     await seek('ArrowRight', 17, '#volume');
     await seek('ArrowLeft', 10, '#volume');
     assert.equal(await page.locator('#volume').inputValue(), '70');

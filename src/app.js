@@ -635,7 +635,7 @@ audio.onerror = () => { notify('이 파일을 재생할 수 없습니다. 파일
 document.addEventListener('click', event => { if (!event.target.closest('.row-menu, #track-menu')) $('#track-menu').hidden = true; });
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape') { $('#track-menu').hidden = true; $('#drop-overlay').hidden = true; }
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a' && !compact && !view.startsWith('playlist:') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) && !document.querySelector('dialog[open]')) {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a' && !compact && !view.startsWith('playlist:') && !event.target.isContentEditable && !['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) && !document.querySelector('dialog[open]')) {
     event.preventDefault(); selectedTrackIds = new Set(visibleTracks().map(track => track.id)); renderTrackSelection();
   }
 });
