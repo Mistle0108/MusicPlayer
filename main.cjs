@@ -4,6 +4,9 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { YouTubeExtractor } = require('./youtube.cjs');
 
+const appId = 'local.musicplayer.desktop';
+if (process.platform === 'win32') app.setAppUserModelId(appId);
+
 // Tests use an isolated profile and never touch the user's library.
 if (process.env.MUSIC_PLAYER_TEST_DATA) app.setPath('userData', process.env.MUSIC_PLAYER_TEST_DATA);
 const extensions = new Set(['.mp3', '.flac', '.wav', '.m4a', '.aac', '.ogg', '.opus', '.wma', '.aiff', '.aif']);
@@ -199,6 +202,13 @@ if (hasLock) app.whenReady().then(async () => {
     backgroundColor: '#f8fafc', title: 'Music Player', icon: iconPath, show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
+  if (process.platform === 'win32' && process.env.PORTABLE_EXECUTABLE_FILE) {
+    const executable = process.env.PORTABLE_EXECUTABLE_FILE;
+    win.setAppDetails({
+      appId, appIconPath: executable,
+      relaunchCommand: `"${executable}"`, relaunchDisplayName: 'Music Player'
+    });
+  }
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', event => event.preventDefault());
   win.on('close', event => {

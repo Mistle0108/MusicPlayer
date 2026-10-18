@@ -17,6 +17,7 @@
   "build": {
     "appId": "local.musicplayer.desktop",
     "productName": "Music Player",
+    "artifactName": "Music Player.exe",
     "files": [
       "main.cjs",
       "youtube.cjs",
