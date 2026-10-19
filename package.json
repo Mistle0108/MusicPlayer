@@ -12,7 +12,9 @@
     "prepare:youtube": "node scripts/prepare-youtube-tools.cjs",
     "start": "electron .",
     "test": "node --test --test-concurrency=1 tests/player.test.cjs tests/youtube.test.cjs tests/library.test.cjs",
-    "pack": "electron-builder --win portable"
+    "pack": "electron-builder --win portable",
+    "prepack:folder": "npm run prepack",
+    "pack:folder": "electron-builder --win zip --x64 --config.artifactName=\"Music Player ${version} folder.${ext}\""
   },
   "build": {
     "appId": "local.musicplayer.desktop",

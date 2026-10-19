@@ -25,7 +25,9 @@ Music Player는 컴퓨터에 있는 음악을 라이브러리에 등록하고, �
 
 ## 다운로드 및 실행
 
-배포된 휴대용 실행 파일 `Music Player 1.1.0.exe`를 원하는 위치에 저장하고 실행합니다. 배포 대상은 Windows x64이며 별도 설치 과정이 없습니다. 실행 파일에는 유튜브 음원 추출에 필요한 도구도 포함되어 있어 Node.js나 FFmpeg를 따로 설치하지 않아도 됩니다.
+폴더형 배포 파일 `Music Player 1.2.1 folder.zip`을 원하는 폴더에 압축 해제한 뒤, 그 안의 `Music Player.exe`를 실행합니다. EXE와 `resources` 폴더, DLL 등은 함께 보관해야 하며 EXE만 따로 옮기면 실행되지 않습니다. 바탕화면에는 실행 파일의 바로가기를 만들 수 있습니다. 단일 EXE 배포와 달리 실행할 때마다 압축을 풀지 않습니다.
+
+배포 대상은 Windows x64이며 별도 설치 과정이 없습니다. 유튜브 음원 추출에 필요한 도구도 포함되어 있어 Node.js나 FFmpeg를 따로 설치하지 않아도 됩니다.
 
 다른 버전의 Music Player가 실행 중이라면 먼저 완전히 종료한 뒤 새 버전을 실행합니다. 트레이로 이동한 상태에서는 트레이 메뉴의 ‘종료’를 사용합니다. 앱이 이미 실행 중일 때 실행 파일을 다시 열면 기존 창이 표시됩니다.
 
@@ -178,7 +180,15 @@ Playwright로 실제 Electron 창을 실행해 파일·폴더 등록, 검색, �
 npm run pack
 ```
 
-Windows x64 휴대용 실행 파일을 생성합니다. 현재 버전의 결과물은 `release/Music Player 1.1.0.exe`이며, 패키징된 앱 폴더는 `release/win-unpacked/`에 생성됩니다.
+Windows 휴대용 단일 실행 파일 `release/Music Player.exe`를 생성합니다.
+
+폴더형 Windows x64 배포 ZIP을 만들려면 다음 명령을 사용합니다.
+
+```powershell
+npm run pack:folder
+```
+
+현재 버전의 ZIP은 `release/Music Player 1.2.1 folder.zip`이며, 바로 실행할 수 있는 앱 폴더는 `release/win-unpacked/`에 생성됩니다. 배포할 때는 ZIP 전체를 전달하고 사용자는 빈 폴더에 압축을 해제합니다.
 
 ### 아이콘 수정
 
